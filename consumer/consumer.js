@@ -34,13 +34,19 @@ async function main() {
             }
 
             const final_stored = {status_code, response};
-            // We also need to kafka produce a reply to reply_topic
-            
-            redis_client.set(request_id, JSON.stringify(final_stored), 'EX', 1800, (err) => {
+            const final_value = JSON.stringify(final_stored);
+            // We set the final request_id => response to redis that can be polled VIA the API
+            redis_client.set(request_id, final_value, 'EX', 1800, (err) => {
                 if (err == null) {
-                    console.log('CALL BACK');
                 }
             });
+
+            // We also publish a message for the websockets
+            redis_client.publish(reply_topic, final_value, (err) => {
+                if (err == null) {
+                }
+            });
+
         }
     });
 };

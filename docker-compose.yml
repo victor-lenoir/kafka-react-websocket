@@ -23,6 +23,22 @@ services:
       SHOP_TOPIC: 'shop'
       REPLY_TOPIC: 'api1'
 
+  websocket:
+    hostname: websocket
+    build: ./websocket
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./websocket:/app/
+    depends_on:
+      - broker
+      - redis
+    command: npx nodemon websocket.js
+    environment:
+      KAFKA_BROKER_HOSTS: 'broker:29092'
+      REDIS_HOSTS: 'redis:6379'
+      LISTEN_TOPIC: 'api1'
+
   consumer:
     hostname: consumer
     build: ./consumer

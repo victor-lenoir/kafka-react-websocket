@@ -4,4 +4,6 @@ COPY package*.json ./
 RUN npm install
 
 COPY . /app/
-CMD node consumer.js
+EXPOSE 3001
+CMD node websocket.js
+
