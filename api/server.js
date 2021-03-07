@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = 8080;
 const { Kafka } = require('kafkajs');
 const kafka = new Kafka({
     brokers: process.env.KAFKA_BROKER_HOSTS.split(',')

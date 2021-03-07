@@ -6,16 +6,32 @@ services:
     ports:
       - "6379:6379"
 
+  web:
+    hostname: web
+    build: ./web
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app/
+    depends_on:
+      - api
+      - websocket
+    command: npm start
+    environment:
+      API_URL: 'http://api:8080'
+      WEBSOCKET_URL: 'wss://websocket:3001'
+
   api:
     hostname: api
     build: ./api
     ports:
-      - "3000:3000"
+      - "8080:8080"
     volumes:
       - ./api:/app/
     depends_on:
       - broker
       - redis
+      - consumer
     command: npx nodemon server.js
     environment:
       KAFKA_BROKER_HOSTS: 'broker:29092'
