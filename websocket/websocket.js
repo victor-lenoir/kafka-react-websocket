@@ -17,6 +17,22 @@ const WebSocketServer = require('websocket').server;
 
 let connected_users = {};
 
+function add_user(user_id, connection) {
+    if (connected_users[user_id] == null)
+        connected_users[user_id] = [];
+    connected_users[user_id].push(connection);
+}
+
+function remove_user(user_id, connection) {
+    if (user_id == null) return;
+    if ((connected_users[user_id] != null) && (connected_users[user_id].length > 0)) {
+        let index = connected_users[user_id].indexOf(connection);
+        if (index > -1) {
+            connected_users[user_id].splice(index, 1);
+        }
+    }
+}
+
 async function main() {
     console.log('Websocket run');
     var server = http.createServer(function(request, response) {
@@ -43,7 +59,6 @@ async function main() {
     }
 
     wsServer.on('request', function(request) {
-
         if (!originIsAllowed(request.origin)) {
             // Make sure we only accept requests from an allowed origin
             request.reject();
@@ -55,12 +70,16 @@ async function main() {
         console.log((new Date()) + ' Connection accepted.');
         connection.on('message', function(message) {
             if (message.type === 'utf8') {
+                
+                if (connection.user_id != null) {
+                    remove_user(connection.user_id, connection);
+                }
                 connection.user_id = message.utf8Data;
-                connected_users[connection.user_id] = connection;
+                add_user(connection.user_id, connection);
             }
         });
         connection.on('close', function(reasonCode, description) {
-            if (connection.user_id != null) delete connected_users[connection.user_id];
+            remove_user(connection.user_id, connection);
             console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
     });
@@ -73,9 +92,11 @@ async function listener() {
         const destination = parsed_message.destination;
         console.log("REDIS WEBSOCKET RECEIVE message:", message);
 
-        if (connected_users[destination] != null) {
+        if ((connected_users[destination] != null) && (connected_users[destination].length > 0)) {
             console.log('forward it to connected user');
-            connected_users[destination].sendUTF(message);
+            connected_users[destination].map((connection) => {
+                connection.sendUTF(message);
+            });
         }
 
     });
