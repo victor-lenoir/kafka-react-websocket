@@ -4,8 +4,11 @@ const kafka = new Kafka({
 });
 const { v4: uuidv4 } = require('uuid');
 const consumer = kafka.consumer({groupId: process.env.CONSUMER_GROUP});
-var Memcached = require('memcached');
-var memcached = new Memcached(process.env.MEMCACHED_HOSTS.split(','));
+
+const redis_host = process.env.REDIS_HOSTS.split(',')[0];
+const redis_url = '//' + redis_host;
+const redis = require("redis");
+const redis_client = redis.createClient(redis_url);
 
 
 async function main() {
@@ -33,7 +36,7 @@ async function main() {
             const final_stored = {status_code, response};
             // We also need to kafka produce a reply to reply_topic
             
-            memcached.set(request_id, JSON.stringify(final_stored), 1800, (err) => {
+            redis_client.set(request_id, JSON.stringify(final_stored), 'EX', 1800, (err) => {
                 if (err == null) {
                     console.log('CALL BACK');
                 }

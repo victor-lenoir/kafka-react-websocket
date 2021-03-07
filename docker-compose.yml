@@ -1,10 +1,10 @@
 version: '3.7'
 
 services:
-  memcached:
-    image: 'bitnami/memcached:latest'
+  redis:
+    image: 'redis:alpine'
     ports:
-      - "11211:11211"
+      - "6379:6379"
 
   api:
     hostname: api
@@ -13,14 +13,13 @@ services:
       - "3000:3000"
     volumes:
       - ./api:/app/
-      - /app/node_modules
     depends_on:
       - broker
-      - memcached
+      - redis
     command: npx nodemon server.js
     environment:
       KAFKA_BROKER_HOSTS: 'broker:29092'
-      MEMCACHED_HOSTS: 'memcached:11211'
+      REDIS_HOSTS: 'redis:6379'
       SHOP_TOPIC: 'shop'
       REPLY_TOPIC: 'api1'
 
@@ -29,14 +28,13 @@ services:
     build: ./consumer
     volumes:
       - ./consumer:/app/
-      - /app/node_modules
     depends_on:
       - broker
-      - memcached
+      - redis
     command: npx nodemon consumer.js
     environment:
       KAFKA_BROKER_HOSTS: 'broker:29092'
-      MEMCACHED_HOSTS: 'memcached:11211'
+      REDIS_HOSTS: 'redis:6379'
       SHOP_TOPIC: 'shop'
       CONSUMER_GROUP: 'main_processor'
 

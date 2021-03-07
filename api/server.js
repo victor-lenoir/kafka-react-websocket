@@ -7,8 +7,11 @@ const kafka = new Kafka({
 });
 const { v4: uuidv4 } = require('uuid');
 const producer = kafka.producer();
-var Memcached = require('memcached');
-var memcached = new Memcached(process.env.MEMCACHED_HOSTS.split(','));
+
+const redis_host = process.env.REDIS_HOSTS.split(',')[0];
+const redis_url = '//' + redis_host;
+const redis = require("redis");
+const redis_client = redis.createClient(redis_url);
 
 const microservice_topic = process.env.SHOP_TOPIC;
 const reply_topic = process.env.REPLY_TOPIC;
@@ -50,12 +53,12 @@ producer.connect().then(() => {
 
     app.get('/request/:requestId', function (req, res) {
         const request_id = req.params.requestId;
-        memcached.get(req.params.requestId, function (err, data) {
+        redis_client.get(req.params.requestId, function (err, data) {
             if (data == null) {
                 waiting_resp(req, res, request_id);
             }
             else {
-                res.send({state: 'DONE', data: JSON.parse(data)});
+                res.send({state: 'DONE', data: JSON.parse(data.toString())});
             }
         });
     });
