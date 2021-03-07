@@ -15,6 +15,8 @@ const listen_topic = process.env.LISTEN_TOPIC;
 
 const WebSocketServer = require('websocket').server;
 
+let connected_users = {};
+
 async function main() {
     console.log('Websocket run');
     var server = http.createServer(function(request, response) {
@@ -41,41 +43,46 @@ async function main() {
     }
 
     wsServer.on('request', function(request) {
+
         if (!originIsAllowed(request.origin)) {
             // Make sure we only accept requests from an allowed origin
             request.reject();
             console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
             return;
         }
-
+        console.log('CONNECTED USERS RIGHT NOW:', Object.keys(connected_users).length);
         var connection = request.accept('echo-protocol', request.origin);
         console.log((new Date()) + ' Connection accepted.');
         connection.on('message', function(message) {
             if (message.type === 'utf8') {
-                console.log('Received Message: ' + message.utf8Data);
-                connection.sendUTF(message.utf8Data);
-            }
-            else if (message.type === 'binary') {
-                console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-                connection.sendBytes(message.binaryData);
+                connection.user_id = message.utf8Data;
+                connected_users[connection.user_id] = connection;
             }
         });
         connection.on('close', function(reasonCode, description) {
+            if (connection.user_id != null) delete connected_users[connection.user_id];
             console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
     });
-
 };
 
 
 async function listener() {
     redis_client.on("message", function (channel, message) {
+        let parsed_message = JSON.parse(message);
+        const destination = parsed_message.destination;
         console.log("REDIS WEBSOCKET RECEIVE message:", message);
+
+        if (connected_users[destination] != null) {
+            console.log('forward it to connected user');
+            connected_users[destination].sendUTF(message);
+        }
+
     });
 
     redis_client.subscribe(listen_topic);
+    console.log('Listening to redis on topic', listen_topic);
 
 };
 listener();
-
 main();
