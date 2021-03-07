@@ -21,6 +21,24 @@ services:
     environment:
       KAFKA_BROKER_HOSTS: 'broker:29092'
       MEMCACHED_HOSTS: 'memcached:11211'
+      SHOP_TOPIC: 'shop'
+      REPLY_TOPIC: 'api1'
+
+  consumer:
+    hostname: consumer
+    build: ./consumer
+    volumes:
+      - ./consumer:/app/
+      - /app/node_modules
+    depends_on:
+      - broker
+      - memcached
+    command: npx nodemon consumer.js
+    environment:
+      KAFKA_BROKER_HOSTS: 'broker:29092'
+      MEMCACHED_HOSTS: 'memcached:11211'
+      SHOP_TOPIC: 'shop'
+      CONSUMER_GROUP: 'main_processor'
 
   # The stuff below is just taken from the official docker compose of Kafka: https://raw.githubusercontent.com/confluentinc/cp-all-in-one/6.1.0-post/cp-all-in-one/docker-compose.yml
   zookeeper:

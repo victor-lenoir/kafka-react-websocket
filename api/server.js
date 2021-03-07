@@ -3,7 +3,6 @@ const app = express();
 const port = 3000;
 const { Kafka } = require('kafkajs');
 const kafka = new Kafka({
-    clientId: 'npm-slack-notifier',
     brokers: process.env.KAFKA_BROKER_HOSTS.split(',')
 });
 const { v4: uuidv4 } = require('uuid');
@@ -11,6 +10,8 @@ const producer = kafka.producer();
 var Memcached = require('memcached');
 var memcached = new Memcached(process.env.MEMCACHED_HOSTS.split(','));
 
+const microservice_topic = process.env.SHOP_TOPIC;
+const reply_topic = process.env.REPLY_TOPIC;
 
 function waiting_resp(req, res, request_id) {
     const poll_url = req.protocol + '://' + req.get('host') + '/request/' + request_id;
@@ -25,25 +26,26 @@ function waiting_resp(req, res, request_id) {
 function make_request(name, req, res) {
     // if NONCE we do something else maybe ?
     const request_id = uuidv4();
-    const request_obj = {id: request_id,
-                         ...req.query};
-    producer.send({topic: 'request',
-                   messages: [{key: 'registration', value: JSON.stringify(request_obj)}]}).then((responses) => {
+    const headers = {request_id: request_id, reply_topic: reply_topic};
+    const request_obj = {...req.query};
+    producer.send({topic: microservice_topic,
+                   messages: [{key: name, headers: headers, value: JSON.stringify(request_obj)}]}).then((responses) => {
                        const response = responses[0];
                        if (response.errorCode === 0) {
                            waiting_resp(req, res, request_id);
                            return;
                        }
                        else {
-                           // ERROR HANDLING
+                           res.send({state: 'ERROR',
+                                     error: 'kafka_message_failed'});
                        }
                    });
 }
 
 producer.connect().then(() => {
     console.log('Kafka Producer Connected');
-    app.get('/registration', async (req, res) => {
-        make_request('registration', req, res);
+    app.get('/add_to_cart', async (req, res) => {
+        make_request('add_to_cart', req, res);
     });
 
     app.get('/request/:requestId', function (req, res) {
