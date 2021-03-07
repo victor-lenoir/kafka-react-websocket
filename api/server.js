@@ -29,7 +29,7 @@ function waiting_resp(req, res, request_id) {
 function make_request(name, req, res) {
     // if NONCE we do something else maybe ?
     const request_id = uuidv4();
-    const headers = {request_id: request_id, reply_topic: reply_topic};
+    let headers = {request_id: request_id, reply_topic: reply_topic};
     const request_obj = {...req.query};
     producer.send({topic: microservice_topic,
                    messages: [{key: name, headers: headers, value: JSON.stringify(request_obj)}]}).then((responses) => {

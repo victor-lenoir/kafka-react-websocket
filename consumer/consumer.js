@@ -23,7 +23,7 @@ async function main() {
             const value = JSON.parse(message.value.toString());
             const request_id = headers['request_id'].toString();
             const reply_topic = headers['reply_topic'].toString();
-
+            let user_id = value.user_id;
 
             let response = {key: key};
             let status_code = 200;
@@ -32,20 +32,23 @@ async function main() {
                 // Add Stuff in database
                 // Returns response
             }
-
-            const final_stored = {status_code, response};
+            console.log('Consume.');
+            let final_stored = {status_code, response};
             const final_value = JSON.stringify(final_stored);
             // We set the final request_id => response to redis that can be polled VIA the API
             redis_client.set(request_id, final_value, 'EX', 1800, (err) => {
                 if (err == null) {
                 }
             });
-
-            // We also publish a message for the websockets
-            redis_client.publish(reply_topic, final_value, (err) => {
-                if (err == null) {
-                }
-            });
+            if (user_id != null) {
+                final_stored['destination'] = user_id;
+                
+                // We also publish a message for the websockets
+                redis_client.publish(reply_topic, JSON.stringify(final_stored), (err) => {
+                    if (err == null) {
+                    }
+                });
+            }
 
         }
     });
