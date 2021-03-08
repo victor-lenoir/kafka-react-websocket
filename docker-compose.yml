@@ -37,7 +37,6 @@ services:
       KAFKA_BROKER_HOSTS: 'broker:29092'
       REDIS_HOSTS: 'redis:6379'
       SHOP_TOPIC: 'shop'
-      REPLY_TOPIC: 'api1'
 
   websocket:
     hostname: websocket
@@ -53,7 +52,7 @@ services:
     environment:
       KAFKA_BROKER_HOSTS: 'broker:29092'
       REDIS_HOSTS: 'redis:6379'
-      LISTEN_TOPIC: 'api1'
+      WEBSOCKET_CHANNEL: 'websocket1'
 
   consumer:
     hostname: consumer

@@ -22,7 +22,11 @@ async function main() {
             const timestamp = message.timestamp;
             const value = JSON.parse(message.value.toString());
             const request_id = headers['request_id'].toString();
-            const reply_topic = headers['reply_topic'].toString();
+            let websocket_channel = headers['websocket_channel'];
+
+            if (websocket_channel != null) {
+                websocket_channel = websocket_channel.toString();
+            }
             let user_id = value.user_id;
 
             let response = {key: key};
@@ -40,11 +44,11 @@ async function main() {
                 if (err == null) {
                 }
             });
-            if (user_id != null) {
+            if ((user_id != null) &&& (websocket_channel != null)) {
                 final_stored['destination'] = user_id;
                 
                 // We also publish a message for the websockets
-                redis_client.publish(reply_topic, JSON.stringify(final_stored), (err) => {
+                redis_client.publish(websocket_channel, JSON.stringify(final_stored), (err) => {
                     if (err == null) {
                     }
                 });

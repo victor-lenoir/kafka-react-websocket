@@ -11,27 +11,13 @@ const redis_url = '//' + redis_host;
 const redis = require("redis");
 const redis_client = redis.createClient(redis_url);
 
-const listen_topic = process.env.LISTEN_TOPIC;
+// The listening redis channel is created at launch
+// Forwarded to new client, to the api pod, stored in the kafka header, then when consumed is used to forward the reply the websocket server and back to the client... Simple really
+const listen_channel = uuidv4();
 
 const WebSocketServer = require('websocket').server;
 
 let connected_users = {};
-
-function add_user(user_id, connection) {
-    if (connected_users[user_id] == null)
-        connected_users[user_id] = [];
-    connected_users[user_id].push(connection);
-}
-
-function remove_user(user_id, connection) {
-    if (user_id == null) return;
-    if ((connected_users[user_id] != null) && (connected_users[user_id].length > 0)) {
-        let index = connected_users[user_id].indexOf(connection);
-        if (index > -1) {
-            connected_users[user_id].splice(index, 1);
-        }
-    }
-}
 
 async function main() {
     console.log('Websocket run');
@@ -40,6 +26,7 @@ async function main() {
         response.writeHead(404);
         response.end();
     });
+
     server.listen(3001, function() {
         console.log((new Date()) + ' Websocket Server is listening on port 3001');
     });
@@ -65,21 +52,24 @@ async function main() {
             console.log((new Date()) + ' Connection from origin ' + request.origin + ' rejected.');
             return;
         }
-        console.log('CONNECTED USERS RIGHT NOW:', Object.keys(connected_users).length);
         var connection = request.accept('echo-protocol', request.origin);
+        connection.id = uuidv4();
+        connected_users[connection.id] = connection;
+        console.log('CONNECTED USERS RIGHT NOW:', Object.keys(connected_users).length, Object.keys(connected_users));
+
+        function whoami() {
+            connection.sendUTF(JSON.stringify({connection_id: connection.id,
+                                               websocket_channel: listen_channel}));
+        }
+        whoami();
         console.log((new Date()) + ' Connection accepted.');
         connection.on('message', function(message) {
-            if (message.type === 'utf8') {
-                
-                if (connection.user_id != null) {
-                    remove_user(connection.user_id, connection);
-                }
-                connection.user_id = message.utf8Data;
-                add_user(connection.user_id, connection);
+            if ((message.type === 'utf8') && (message.utf8Data == 'whoami')) {
+                whoami();
             }
         });
         connection.on('close', function(reasonCode, description) {
-            remove_user(connection.user_id, connection);
+            delete connected_users[connection.id];
             console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
     });
@@ -101,8 +91,8 @@ async function listener() {
 
     });
 
-    redis_client.subscribe(listen_topic);
-    console.log('Listening to redis on topic', listen_topic);
+    redis_client.subscribe(listen_channel);
+    console.log('Listening to redis on channel', listen_channel);
 
 };
 listener();
