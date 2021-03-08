@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
+import process_server_messages from './process_server_messages';
 import config from './config';
 
 // This is ugly but it's just for POC leave me alone
@@ -54,7 +55,9 @@ function Websocket(props) {
             if (data_obj.websocket_channel != null) {
                 setWebsocketChannel(data_obj.websocket_channel);
             }
-            console.log('Receive message:', data_obj);
+            else {
+                process_server_messages(data_obj);
+            }
         });
     }, [state]);
     let connection_banner = null;
