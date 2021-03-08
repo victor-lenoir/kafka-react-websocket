@@ -1,9 +1,14 @@
-import Websocket from './common/Websocket';
+import Websocket, {useWebsocket} from './common/Websocket';
 import './App.css';
 
 function Home(props) {
-    console.log(props);
-    return 'Take me home';
+    const {connection_id, websocket_channel, websocket_state} = useWebsocket();
+    return (<div>
+              <div>Connection id: {connection_id}</div>
+              <div>Websocket channel: {websocket_channel}</div>
+              <div>Websocket state: {websocket_state}</div>
+
+            </div>);
 }
 function App() {
     return (

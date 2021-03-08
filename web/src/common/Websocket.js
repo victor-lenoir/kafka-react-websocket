@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import config from './config';
 
 // This is ugly but it's just for POC leave me alone
@@ -12,12 +12,21 @@ export const WEBSOCKET_STATE = {
     CLOSE: "close"
 };
 
+
+const WebsocketContext = React.createContext({});
+
 function Websocket(props) {
     const [state, setState] = useState(WEBSOCKET_STATE.INITIAL);
+    const [websocketChannel, setWebsocketChannel] = useState(null);
+    const [connectionId, setConnectionId] = useState(null);
 
-    const try_connecting = () => {
+    function reinit() {
+        setState(WEBSOCKET_STATE.INITIAL);
+    }
+    useEffect(() => {
         // If we are already connecting or connected we skip that block
-        if ((state === WEBSOCKET_STATE.CONNECTING) || (state === WEBSOCKET_STATE.CONNECTED)) return;
+        if (state !== WEBSOCKET_STATE.INITIAL) return;
+        setState(WEBSOCKET_STATE.CONNECTING);
         const socket = new WebSocket(config.websocket_url, "echo-protocol");
 
         // Connection opened
@@ -31,23 +40,23 @@ function Websocket(props) {
         socket.addEventListener('close', function (event) {
             console.log('Websocket closed');
             setState(WEBSOCKET_STATE.CLOSE);
-            window.setTimeout(try_connecting, 1000);  // We retry connecting in 1000ms
-            
-            // We need to display a lost connection in APP and poll to retrieve connection to a new websocket =)
-
+            setWebsocketChannel(null);
+            setConnectionId(null);
+            window.setTimeout(reinit, 2000);  // We retry connecting in 1000ms
         });
 
         // Listen for messages
         socket.addEventListener('message', function (event) {
-            console.log('Message from server ', event.data);
+            const data_obj = JSON.parse(event.data);
+            if (data_obj.connection_id != null) {
+                setConnectionId(data_obj.connection_id);
+            }
+            if (data_obj.websocket_channel != null) {
+                setWebsocketChannel(data_obj.websocket_channel);
+            }
+            console.log('Receive message:', data_obj);
         });
-        // const WebsocketContext = React.createContext({websocket: });
-
-    };
-    useEffect(() => {
-        try_connecting();
-    }, [props]);
-
+    }, [state]);
     let connection_banner = null;
     if (state === WEBSOCKET_STATE.CONNECTING) {
         connection_banner = <div>Reconnecting...</div>;
@@ -56,10 +65,14 @@ function Websocket(props) {
         connection_banner = <div>Lost Internet connection... Retrying...</div>;
 
     }
-    return (<>
-       {connection_banner}
-       {props.children}
-     </>);
+    return (<WebsocketContext.Provider value={{websocket_channel:websocketChannel, connection_id: connectionId, websocket_state : state}}>
+              {connection_banner}
+              {props.children}
+            </WebsocketContext.Provider>);
+}
+
+export function useWebsocket() {
+    return useContext(WebsocketContext);
 }
 
 export default Websocket;
